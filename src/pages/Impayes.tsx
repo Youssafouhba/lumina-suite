@@ -1,8 +1,12 @@
-import { AlertTriangle, MessageCircle, Phone, Mail, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, MessageCircle, Phone, Mail, ChevronRight, Download } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PeriodFilter } from "@/components/period-filter";
+import { exportArrearsPdf, PeriodKey } from "@/lib/pdf-export";
+import { toast } from "sonner";
 import { arrears } from "@/lib/mock-data";
 
 const riskStyle: Record<string, string> = {
@@ -12,14 +16,29 @@ const riskStyle: Record<string, string> = {
 };
 
 export default function Impayes() {
+  const [period, setPeriod] = useState<PeriodKey>("30d");
   const total = arrears.reduce((s, a) => s + parseInt(a.montant.replace(/\D/g, "")), 0);
+
+  const handleExport = () => {
+    exportArrearsPdf({ period, arrears, total });
+    toast.success("Rapport PDF généré");
+  };
+
   return (
     <div>
       <PageHeader
         eyebrow="Recouvrement"
         title="Impayés & relances"
         description="Workflow multi-canal automatisé : SMS, email, WhatsApp, mise en demeure."
-        actions={<Button variant="outline" size="sm" className="h-9">Pause des relances</Button>}
+        actions={
+          <>
+            <PeriodFilter value={period} onChange={setPeriod} />
+            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleExport}>
+              <Download className="h-4 w-4" /> Export PDF
+            </Button>
+            <Button variant="outline" size="sm" className="h-9">Pause des relances</Button>
+          </>
+        }
       />
 
       <div className="p-4 md:p-8 space-y-5">
