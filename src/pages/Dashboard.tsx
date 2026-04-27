@@ -1,11 +1,17 @@
-import { TrendingDown, TrendingUp, ArrowUpRight, Building2, Users, FileText, AlertTriangle, Wallet, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
+import { TrendingDown, TrendingUp, ArrowUpRight, Building2, Users, FileText, AlertTriangle, Wallet, Sparkles, Download } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PeriodFilter } from "@/components/period-filter";
+import { exportDashboardPdf, PeriodKey } from "@/lib/pdf-export";
+import { toast } from "sonner";
 import { kpis, revenueSeries, occupancyByBuilding, activity, messages } from "@/lib/mock-data";
+
+const PERIOD_MONTHS: Record<PeriodKey, number> = { "7d": 1, "30d": 1, "90d": 3, ytd: 9, "12m": 9 };
 
 const channelIcon: Record<string, string> = {
   WhatsApp: "💬",
@@ -15,6 +21,22 @@ const channelIcon: Record<string, string> = {
 };
 
 export default function Dashboard() {
+  const [period, setPeriod] = useState<PeriodKey>("30d");
+  const filteredRevenue = useMemo(
+    () => revenueSeries.slice(-PERIOD_MONTHS[period]),
+    [period],
+  );
+
+  const handleExport = () => {
+    exportDashboardPdf({
+      period,
+      kpis,
+      revenue: filteredRevenue,
+      occupancy: occupancyByBuilding,
+    });
+    toast.success("Rapport PDF généré");
+  };
+
   return (
     <div>
       <PageHeader
@@ -23,7 +45,10 @@ export default function Dashboard() {
         description="6 immeubles · 198 lots · 124 baux actifs. Tout est sous contrôle."
         actions={
           <>
-            <Button variant="outline" size="sm" className="h-9">Exporter</Button>
+            <PeriodFilter value={period} onChange={setPeriod} />
+            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleExport}>
+              <Download className="h-4 w-4" /> Export PDF
+            </Button>
             <Button size="sm" className="h-9 bg-gradient-primary text-primary-foreground shadow-soft hover:opacity-95 gap-1.5">
               <Sparkles className="h-4 w-4" /> Rapport IA
             </Button>
