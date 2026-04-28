@@ -500,7 +500,8 @@ function PermissionsDialog({
 
   if (!admin || !draft) return null;
 
-  const allBuildings = draft.scopeBuildings === "all";
+  const mode = scopeMode(draft.scopeBuildings);
+  const allBuildingIds = buildings.map((b) => b.id);
 
   const togglePermAction = (mod: ModuleKey, action: ActionKey) => {
     setDraft((prev) => {
@@ -528,19 +529,62 @@ function PermissionsDialog({
     });
   };
 
-  const toggleBuilding = (id: string) => {
+  const setMode = (next: ScopeMode) => {
     setDraft((prev) => {
       if (!prev) return prev;
-      const list = prev.scopeBuildings === "all" ? [] : [...prev.scopeBuildings];
-      const idx = list.indexOf(id);
-      if (idx >= 0) list.splice(idx, 1);
-      else list.push(id);
-      return { ...prev, scopeBuildings: list };
+      if (next === "all") return { ...prev, scopeBuildings: "all" };
+      if (next === "include") {
+        // preserve current effective list when switching from exclude
+        if (prev.scopeBuildings === "all") return { ...prev, scopeBuildings: [...allBuildingIds] };
+        if (Array.isArray(prev.scopeBuildings)) return prev;
+        const excluded = prev.scopeBuildings.except;
+        return { ...prev, scopeBuildings: allBuildingIds.filter((id) => !excluded.includes(id)) };
+      }
+      // exclude
+      if (prev.scopeBuildings === "all") return { ...prev, scopeBuildings: { except: [] } };
+      if (Array.isArray(prev.scopeBuildings)) {
+        const included = prev.scopeBuildings;
+        return { ...prev, scopeBuildings: { except: allBuildingIds.filter((id) => !included.includes(id)) } };
+      }
+      return prev;
     });
   };
 
-  const setAllBuildings = (on: boolean) => {
-    setDraft((prev) => (prev ? { ...prev, scopeBuildings: on ? "all" : [] } : prev));
+  const toggleBuildingInScope = (id: string) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      if (prev.scopeBuildings === "all") return prev;
+      if (Array.isArray(prev.scopeBuildings)) {
+        const list = [...prev.scopeBuildings];
+        const idx = list.indexOf(id);
+        if (idx >= 0) list.splice(idx, 1);
+        else list.push(id);
+        return { ...prev, scopeBuildings: list };
+      }
+      const except = [...prev.scopeBuildings.except];
+      const idx = except.indexOf(id);
+      if (idx >= 0) except.splice(idx, 1);
+      else except.push(id);
+      return { ...prev, scopeBuildings: { except } };
+    });
+  };
+
+  const selectAllInScope = () => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      if (prev.scopeBuildings === "all") return prev;
+      if (Array.isArray(prev.scopeBuildings)) return { ...prev, scopeBuildings: [...allBuildingIds] };
+      return { ...prev, scopeBuildings: { except: [] } };
+    });
+  };
+
+  const clearScope = () => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      if (prev.scopeBuildings === "all") return prev;
+      if (Array.isArray(prev.scopeBuildings)) return { ...prev, scopeBuildings: [] };
+      return { ...prev, scopeBuildings: { except: [...allBuildingIds] } };
+    });
   };
 
   return (
