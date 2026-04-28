@@ -85,6 +85,14 @@ export default function Impayes() {
           ))}
         </Card>
       </div>
+
+      <PdfPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title="Aperçu du rapport des impayés"
+        description={`Période : ${PERIOD_LABELS[period]} · Vérifiez le rapport avant téléchargement.`}
+        build={() => buildArrearsPdf({ period, arrears, total })}
+      />
     </div>
   );
 }
