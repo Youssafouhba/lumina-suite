@@ -23,20 +23,11 @@ const channelIcon: Record<string, string> = {
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<PeriodKey>("30d");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const filteredRevenue = useMemo(
     () => revenueSeries.slice(-PERIOD_MONTHS[period]),
     [period],
   );
-
-  const handleExport = () => {
-    exportDashboardPdf({
-      period,
-      kpis,
-      revenue: filteredRevenue,
-      occupancy: occupancyByBuilding,
-    });
-    toast.success("Rapport PDF généré");
-  };
 
   return (
     <div>
@@ -47,7 +38,7 @@ export default function Dashboard() {
         actions={
           <>
             <PeriodFilter value={period} onChange={setPeriod} />
-            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleExport}>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setPreviewOpen(true)}>
               <Download className="h-4 w-4" /> Export PDF
             </Button>
             <Button size="sm" className="h-9 bg-gradient-primary text-primary-foreground shadow-soft hover:opacity-95 gap-1.5">
