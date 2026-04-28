@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PeriodFilter } from "@/components/period-filter";
-import { exportDashboardPdf, PeriodKey } from "@/lib/pdf-export";
+import { buildDashboardPdf, PeriodKey, PERIOD_LABELS } from "@/lib/pdf-export";
+import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { toast } from "sonner";
 import { kpis, revenueSeries, occupancyByBuilding, activity, messages } from "@/lib/mock-data";
 
