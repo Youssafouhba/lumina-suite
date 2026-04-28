@@ -9,6 +9,7 @@ import {
   Map,
   Settings,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -38,6 +39,7 @@ const mainItems = [
 const toolsItems = [
   { title: "Boîte unifiée", url: "/inbox", icon: Inbox, badge: "12" },
   { title: "Cartographie", url: "/carte", icon: Map },
+  { title: "Sous-admins", url: "/admins", icon: ShieldCheck },
   { title: "Configuration", url: "/configuration", icon: Settings },
 ];
 
