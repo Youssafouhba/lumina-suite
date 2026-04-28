@@ -9,7 +9,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PeriodFilter } from "@/components/period-filter";
 import { buildDashboardPdf, PeriodKey, PERIOD_LABELS } from "@/lib/pdf-export";
 import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
-import { toast } from "sonner";
 import { kpis, revenueSeries, occupancyByBuilding, activity, messages } from "@/lib/mock-data";
 
 const PERIOD_MONTHS: Record<PeriodKey, number> = { "7d": 1, "30d": 1, "90d": 3, ytd: 9, "12m": 9 };
