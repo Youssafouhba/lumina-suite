@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PeriodFilter } from "@/components/period-filter";
-import { exportDashboardPdf, PeriodKey } from "@/lib/pdf-export";
-import { toast } from "sonner";
+import { buildDashboardPdf, PeriodKey, PERIOD_LABELS } from "@/lib/pdf-export";
+import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { kpis, revenueSeries, occupancyByBuilding, activity, messages } from "@/lib/mock-data";
 
 const PERIOD_MONTHS: Record<PeriodKey, number> = { "7d": 1, "30d": 1, "90d": 3, ytd: 9, "12m": 9 };
@@ -22,20 +22,11 @@ const channelIcon: Record<string, string> = {
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<PeriodKey>("30d");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const filteredRevenue = useMemo(
     () => revenueSeries.slice(-PERIOD_MONTHS[period]),
     [period],
   );
-
-  const handleExport = () => {
-    exportDashboardPdf({
-      period,
-      kpis,
-      revenue: filteredRevenue,
-      occupancy: occupancyByBuilding,
-    });
-    toast.success("Rapport PDF généré");
-  };
 
   return (
     <div>
@@ -46,7 +37,7 @@ export default function Dashboard() {
         actions={
           <>
             <PeriodFilter value={period} onChange={setPeriod} />
-            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleExport}>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setPreviewOpen(true)}>
               <Download className="h-4 w-4" /> Export PDF
             </Button>
             <Button size="sm" className="h-9 bg-gradient-primary text-primary-foreground shadow-soft hover:opacity-95 gap-1.5">
@@ -216,6 +207,21 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      <PdfPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title="Aperçu du rapport tableau de bord"
+        description={`Période : ${PERIOD_LABELS[period]} · Vérifiez le rapport avant téléchargement.`}
+        build={() =>
+          buildDashboardPdf({
+            period,
+            kpis,
+            revenue: filteredRevenue,
+            occupancy: occupancyByBuilding,
+          })
+        }
+      />
     </div>
   );
 }

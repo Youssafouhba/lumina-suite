@@ -60,7 +60,7 @@ export interface DashboardKpi {
   hint: string;
 }
 
-export function exportDashboardPdf(opts: {
+export function buildDashboardPdf(opts: {
   period: PeriodKey;
   kpis: DashboardKpi[];
   revenue: { month: string; revenus: number; charges: number }[];
@@ -103,7 +103,12 @@ export function exportDashboardPdf(opts: {
   });
 
   footer(doc);
-  doc.save(`estala-dashboard-${opts.period}-${Date.now()}.pdf`);
+  return { doc, filename: `estala-dashboard-${opts.period}-${Date.now()}.pdf` };
+}
+
+export function exportDashboardPdf(opts: Parameters<typeof buildDashboardPdf>[0]) {
+  const { doc, filename } = buildDashboardPdf(opts);
+  doc.save(filename);
 }
 
 export interface ArrearRow {
@@ -115,7 +120,7 @@ export interface ArrearRow {
   risque: string;
 }
 
-export function exportArrearsPdf(opts: { period: PeriodKey; arrears: ArrearRow[]; total: number }) {
+export function buildArrearsPdf(opts: { period: PeriodKey; arrears: ArrearRow[]; total: number }) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   header(
     doc,
@@ -151,5 +156,10 @@ export function exportArrearsPdf(opts: { period: PeriodKey; arrears: ArrearRow[]
   });
 
   footer(doc);
-  doc.save(`estala-impayes-${opts.period}-${Date.now()}.pdf`);
+  return { doc, filename: `estala-impayes-${opts.period}-${Date.now()}.pdf` };
+}
+
+export function exportArrearsPdf(opts: Parameters<typeof buildArrearsPdf>[0]) {
+  const { doc, filename } = buildArrearsPdf(opts);
+  doc.save(filename);
 }

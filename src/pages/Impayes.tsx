@@ -5,8 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PeriodFilter } from "@/components/period-filter";
-import { exportArrearsPdf, PeriodKey } from "@/lib/pdf-export";
-import { toast } from "sonner";
+import { buildArrearsPdf, PeriodKey, PERIOD_LABELS } from "@/lib/pdf-export";
+import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { arrears } from "@/lib/mock-data";
 
 const riskStyle: Record<string, string> = {
@@ -17,12 +17,8 @@ const riskStyle: Record<string, string> = {
 
 export default function Impayes() {
   const [period, setPeriod] = useState<PeriodKey>("30d");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const total = arrears.reduce((s, a) => s + parseInt(a.montant.replace(/\D/g, "")), 0);
-
-  const handleExport = () => {
-    exportArrearsPdf({ period, arrears, total });
-    toast.success("Rapport PDF généré");
-  };
 
   return (
     <div>
@@ -33,7 +29,7 @@ export default function Impayes() {
         actions={
           <>
             <PeriodFilter value={period} onChange={setPeriod} />
-            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleExport}>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setPreviewOpen(true)}>
               <Download className="h-4 w-4" /> Export PDF
             </Button>
             <Button variant="outline" size="sm" className="h-9">Pause des relances</Button>
@@ -89,6 +85,14 @@ export default function Impayes() {
           ))}
         </Card>
       </div>
+
+      <PdfPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title="Aperçu du rapport des impayés"
+        description={`Période : ${PERIOD_LABELS[period]} · Vérifiez le rapport avant téléchargement.`}
+        build={() => buildArrearsPdf({ period, arrears, total })}
+      />
     </div>
   );
 }
