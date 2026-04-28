@@ -96,7 +96,8 @@ type SubAdmin = {
   role: "super_admin" | "sub_admin";
   status: "active" | "invited" | "suspended";
   lastActive: string;
-  scopeBuildings: "all" | string[]; // building ids
+  // "all": full access · string[]: include list · { except: string[] }: all except listed
+  scopeBuildings: "all" | string[] | { except: string[] };
   periodStart?: string; // ISO date
   periodEnd?: string;
   perms: Partial<Record<ModuleKey, ModulePerm>>;
