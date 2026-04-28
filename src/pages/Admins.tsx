@@ -678,52 +678,117 @@ function PermissionsDialog({
           {/* Scope */}
           <TabsContent value="scope" className="m-0">
             <div className="px-6 py-4 space-y-4">
-              <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
-                <div>
-                  <p className="text-sm font-medium">Tout le patrimoine</p>
-                  <p className="text-xs text-muted-foreground">
-                    Accorde l'accès à tous les immeubles, présents et futurs.
-                  </p>
-                </div>
-                <Switch checked={allBuildings} onCheckedChange={setAllBuildings} />
+              {/* Mode selector */}
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { key: "all", label: "Tous", desc: "Patrimoine entier, présents et futurs" },
+                  { key: "include", label: "Sélection", desc: "Uniquement ces immeubles" },
+                  { key: "exclude", label: "Tous sauf", desc: "Tout sauf ces immeubles" },
+                ] as { key: ScopeMode; label: string; desc: string }[]).map((opt) => {
+                  const active = mode === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => setMode(opt.key)}
+                      className={cn(
+                        "rounded-lg border p-3 text-left transition-all",
+                        active
+                          ? "border-accent/60 bg-accent/10 shadow-soft"
+                          : "border-border/60 hover:bg-muted/40",
+                      )}
+                    >
+                      <p className={cn("text-sm font-medium", active && "text-accent")}>{opt.label}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{opt.desc}</p>
+                    </button>
+                  );
+                })}
               </div>
 
-              <Separator />
+              {mode !== "all" && (
+                <>
+                  <Separator />
 
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Immeubles attribués
-                </p>
-                <ScrollArea className="h-[300px] pr-2">
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {buildings.map((b) => {
-                      const checked =
-                        allBuildings || (draft.scopeBuildings !== "all" && draft.scopeBuildings.includes(b.id));
-                      return (
-                        <label
-                          key={b.id}
-                          className={cn(
-                            "flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 p-3 transition-colors",
-                            checked && "bg-muted/30",
-                            allBuildings && "opacity-60 cursor-not-allowed",
-                          )}
-                        >
-                          <Checkbox
-                            checked={checked}
-                            disabled={allBuildings}
-                            onCheckedChange={() => toggleBuilding(b.id)}
-                            className="mt-0.5"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{b.nom}</p>
-                            <p className="text-xs text-muted-foreground truncate">{b.adresse}</p>
-                          </div>
-                        </label>
-                      );
-                    })}
+                  {/* Summary + bulk actions + search */}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-xs text-muted-foreground">
+                      <Badge variant="outline" className="mr-2 border-accent/40 bg-accent/10 text-accent">
+                        {effectiveBuildingCount(draft.scopeBuildings, buildings.length)} / {buildings.length}
+                      </Badge>
+                      {mode === "include" ? "immeubles inclus" : "immeubles accessibles (mode exclusion)"}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={selectAllInScope}>
+                        Tout cocher
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={clearScope}>
+                        Tout décocher
+                      </Button>
+                    </div>
                   </div>
-                </ScrollArea>
-              </div>
+
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={scopeQuery}
+                      onChange={(e) => setScopeQuery(e.target.value)}
+                      placeholder="Filtrer les immeubles…"
+                      className="h-9 pl-9"
+                    />
+                  </div>
+
+                  <ScrollArea className="h-[260px] pr-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {buildings
+                        .filter((b) => {
+                          const q = scopeQuery.toLowerCase().trim();
+                          if (!q) return true;
+                          return b.nom.toLowerCase().includes(q) || b.adresse.toLowerCase().includes(q);
+                        })
+                        .map((b) => {
+                          const inScope = scopeIncludesBuilding(draft.scopeBuildings, b.id, allBuildingIds);
+                          // In include mode, "checked" means included.
+                          // In exclude mode, "checked" means excluded (i.e. in the except list).
+                          const checked =
+                            mode === "include"
+                              ? inScope
+                              : !inScope;
+                          return (
+                            <label
+                              key={b.id}
+                              className={cn(
+                                "flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 p-3 transition-colors",
+                                checked && (mode === "exclude"
+                                  ? "border-destructive/40 bg-destructive/5"
+                                  : "bg-muted/30"),
+                              )}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() => toggleBuildingInScope(b.id)}
+                                className="mt-0.5"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{b.nom}</p>
+                                <p className="text-xs text-muted-foreground truncate">{b.adresse}</p>
+                              </div>
+                              {mode === "exclude" && checked && (
+                                <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">
+                                  Exclu
+                                </Badge>
+                              )}
+                            </label>
+                          );
+                        })}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+
+              {mode === "all" && (
+                <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+                  Cet administrateur a accès à <span className="font-medium text-foreground">tous les {buildings.length} immeubles</span>, ainsi qu'à ceux ajoutés ultérieurement.
+                </div>
+              )}
             </div>
           </TabsContent>
 
