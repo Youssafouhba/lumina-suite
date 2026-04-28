@@ -208,6 +208,21 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      <PdfPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title="Aperçu du rapport tableau de bord"
+        description={`Période : ${PERIOD_LABELS[period]} · Vérifiez le rapport avant téléchargement.`}
+        build={() =>
+          buildDashboardPdf({
+            period,
+            kpis,
+            revenue: filteredRevenue,
+            occupancy: occupancyByBuilding,
+          })
+        }
+      />
     </div>
   );
 }
