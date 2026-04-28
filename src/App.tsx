@@ -14,6 +14,7 @@ import Impayes from "./pages/Impayes";
 import Inbox from "./pages/Inbox";
 import Carte from "./pages/Carte";
 import Configuration from "./pages/Configuration";
+import Admins from "./pages/Admins";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/inbox" element={<Inbox />} />
               <Route path="/carte" element={<Carte />} />
               <Route path="/configuration" element={<Configuration />} />
+              <Route path="/admins" element={<Admins />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
