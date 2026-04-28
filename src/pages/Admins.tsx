@@ -250,12 +250,13 @@ export default function Admins() {
         eyebrow="Gouvernance"
         title="Sous-administrateurs"
         description="Délégation ABAC : périmètres dynamiques par immeuble, période, action et plafond de montant."
-      >
-        <Button onClick={() => setInviteOpen(true)} className="bg-gradient-primary text-primary-foreground shadow-soft">
-          <UserPlus className="mr-2 h-4 w-4" />
-          Inviter un sous-admin
-        </Button>
-      </PageHeader>
+        actions={
+          <Button onClick={() => setInviteOpen(true)} className="bg-gradient-primary text-primary-foreground shadow-soft">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Inviter un sous-admin
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 px-4 md:grid-cols-4 md:px-8">
