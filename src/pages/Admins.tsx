@@ -162,16 +162,41 @@ const SEED: SubAdmin[] = [
 
 // ---------- helpers ----------
 
+type ScopeMode = "all" | "include" | "exclude";
+
+function scopeMode(scope: SubAdmin["scopeBuildings"]): ScopeMode {
+  if (scope === "all") return "all";
+  if (Array.isArray(scope)) return "include";
+  return "exclude";
+}
+
+function scopeIncludesBuilding(scope: SubAdmin["scopeBuildings"], id: string, totalIds: string[]) {
+  if (scope === "all") return true;
+  if (Array.isArray(scope)) return scope.includes(id);
+  return !scope.except.includes(id);
+}
+
+function effectiveBuildingCount(scope: SubAdmin["scopeBuildings"], total: number) {
+  if (scope === "all") return total;
+  if (Array.isArray(scope)) return scope.length;
+  return Math.max(0, total - scope.except.length);
+}
+
 function countActions(a: SubAdmin) {
   if (a.role === "super_admin") return "Tous droits";
   const total = Object.values(a.perms).reduce((acc, p) => acc + (p?.actions.length || 0), 0);
   return `${total} action${total > 1 ? "s" : ""}`;
 }
 
-function scopeLabel(a: SubAdmin) {
+function scopeLabel(a: SubAdmin, totalBuildings: number) {
   if (a.role === "super_admin" || a.scopeBuildings === "all") return "Tout le patrimoine";
-  if (a.scopeBuildings.length === 0) return "Aucun immeuble";
-  return `${a.scopeBuildings.length} immeuble${a.scopeBuildings.length > 1 ? "s" : ""}`;
+  if (Array.isArray(a.scopeBuildings)) {
+    if (a.scopeBuildings.length === 0) return "Aucun immeuble";
+    return `${a.scopeBuildings.length} immeuble${a.scopeBuildings.length > 1 ? "s" : ""}`;
+  }
+  const excluded = a.scopeBuildings.except.length;
+  const effective = Math.max(0, totalBuildings - excluded);
+  return `Tous sauf ${excluded} (${effective} actifs)`;
 }
 
 const statusStyles: Record<SubAdmin["status"], string> = {
