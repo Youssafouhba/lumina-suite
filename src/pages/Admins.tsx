@@ -354,7 +354,7 @@ export default function Admins() {
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <Building2 className="h-3 w-3" />
-                      {scopeLabel(a)}
+                      {scopeLabel(a, buildings.length)}
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <ShieldCheck className="h-3 w-3" />
