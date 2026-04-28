@@ -494,6 +494,7 @@ function PermissionsDialog({
   onSave: (a: SubAdmin) => void;
 }) {
   const [draft, setDraft] = useState<SubAdmin | null>(admin);
+  const [scopeQuery, setScopeQuery] = useState("");
 
   // sync when opening on a different admin
   useMemo(() => setDraft(admin), [admin]);
