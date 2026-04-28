@@ -96,7 +96,8 @@ type SubAdmin = {
   role: "super_admin" | "sub_admin";
   status: "active" | "invited" | "suspended";
   lastActive: string;
-  scopeBuildings: "all" | string[]; // building ids
+  // "all": full access · string[]: include list · { except: string[] }: all except listed
+  scopeBuildings: "all" | string[] | { except: string[] };
   periodStart?: string; // ISO date
   periodEnd?: string;
   perms: Partial<Record<ModuleKey, ModulePerm>>;
@@ -161,16 +162,41 @@ const SEED: SubAdmin[] = [
 
 // ---------- helpers ----------
 
+type ScopeMode = "all" | "include" | "exclude";
+
+function scopeMode(scope: SubAdmin["scopeBuildings"]): ScopeMode {
+  if (scope === "all") return "all";
+  if (Array.isArray(scope)) return "include";
+  return "exclude";
+}
+
+function scopeIncludesBuilding(scope: SubAdmin["scopeBuildings"], id: string, totalIds: string[]) {
+  if (scope === "all") return true;
+  if (Array.isArray(scope)) return scope.includes(id);
+  return !scope.except.includes(id);
+}
+
+function effectiveBuildingCount(scope: SubAdmin["scopeBuildings"], total: number) {
+  if (scope === "all") return total;
+  if (Array.isArray(scope)) return scope.length;
+  return Math.max(0, total - scope.except.length);
+}
+
 function countActions(a: SubAdmin) {
   if (a.role === "super_admin") return "Tous droits";
   const total = Object.values(a.perms).reduce((acc, p) => acc + (p?.actions.length || 0), 0);
   return `${total} action${total > 1 ? "s" : ""}`;
 }
 
-function scopeLabel(a: SubAdmin) {
+function scopeLabel(a: SubAdmin, totalBuildings: number) {
   if (a.role === "super_admin" || a.scopeBuildings === "all") return "Tout le patrimoine";
-  if (a.scopeBuildings.length === 0) return "Aucun immeuble";
-  return `${a.scopeBuildings.length} immeuble${a.scopeBuildings.length > 1 ? "s" : ""}`;
+  if (Array.isArray(a.scopeBuildings)) {
+    if (a.scopeBuildings.length === 0) return "Aucun immeuble";
+    return `${a.scopeBuildings.length} immeuble${a.scopeBuildings.length > 1 ? "s" : ""}`;
+  }
+  const excluded = a.scopeBuildings.except.length;
+  const effective = Math.max(0, totalBuildings - excluded);
+  return `Tous sauf ${excluded} (${effective} actifs)`;
 }
 
 const statusStyles: Record<SubAdmin["status"], string> = {
@@ -328,7 +354,7 @@ export default function Admins() {
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <Building2 className="h-3 w-3" />
-                      {scopeLabel(a)}
+                      {scopeLabel(a, buildings.length)}
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <ShieldCheck className="h-3 w-3" />
@@ -468,13 +494,15 @@ function PermissionsDialog({
   onSave: (a: SubAdmin) => void;
 }) {
   const [draft, setDraft] = useState<SubAdmin | null>(admin);
+  const [scopeQuery, setScopeQuery] = useState("");
 
   // sync when opening on a different admin
   useMemo(() => setDraft(admin), [admin]);
 
   if (!admin || !draft) return null;
 
-  const allBuildings = draft.scopeBuildings === "all";
+  const mode = scopeMode(draft.scopeBuildings);
+  const allBuildingIds = buildings.map((b) => b.id);
 
   const togglePermAction = (mod: ModuleKey, action: ActionKey) => {
     setDraft((prev) => {
@@ -502,19 +530,62 @@ function PermissionsDialog({
     });
   };
 
-  const toggleBuilding = (id: string) => {
+  const setMode = (next: ScopeMode) => {
     setDraft((prev) => {
       if (!prev) return prev;
-      const list = prev.scopeBuildings === "all" ? [] : [...prev.scopeBuildings];
-      const idx = list.indexOf(id);
-      if (idx >= 0) list.splice(idx, 1);
-      else list.push(id);
-      return { ...prev, scopeBuildings: list };
+      if (next === "all") return { ...prev, scopeBuildings: "all" };
+      if (next === "include") {
+        // preserve current effective list when switching from exclude
+        if (prev.scopeBuildings === "all") return { ...prev, scopeBuildings: [...allBuildingIds] };
+        if (Array.isArray(prev.scopeBuildings)) return prev;
+        const excluded = prev.scopeBuildings.except;
+        return { ...prev, scopeBuildings: allBuildingIds.filter((id) => !excluded.includes(id)) };
+      }
+      // exclude
+      if (prev.scopeBuildings === "all") return { ...prev, scopeBuildings: { except: [] } };
+      if (Array.isArray(prev.scopeBuildings)) {
+        const included = prev.scopeBuildings;
+        return { ...prev, scopeBuildings: { except: allBuildingIds.filter((id) => !included.includes(id)) } };
+      }
+      return prev;
     });
   };
 
-  const setAllBuildings = (on: boolean) => {
-    setDraft((prev) => (prev ? { ...prev, scopeBuildings: on ? "all" : [] } : prev));
+  const toggleBuildingInScope = (id: string) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      if (prev.scopeBuildings === "all") return prev;
+      if (Array.isArray(prev.scopeBuildings)) {
+        const list = [...prev.scopeBuildings];
+        const idx = list.indexOf(id);
+        if (idx >= 0) list.splice(idx, 1);
+        else list.push(id);
+        return { ...prev, scopeBuildings: list };
+      }
+      const except = [...prev.scopeBuildings.except];
+      const idx = except.indexOf(id);
+      if (idx >= 0) except.splice(idx, 1);
+      else except.push(id);
+      return { ...prev, scopeBuildings: { except } };
+    });
+  };
+
+  const selectAllInScope = () => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      if (prev.scopeBuildings === "all") return prev;
+      if (Array.isArray(prev.scopeBuildings)) return { ...prev, scopeBuildings: [...allBuildingIds] };
+      return { ...prev, scopeBuildings: { except: [] } };
+    });
+  };
+
+  const clearScope = () => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      if (prev.scopeBuildings === "all") return prev;
+      if (Array.isArray(prev.scopeBuildings)) return { ...prev, scopeBuildings: [] };
+      return { ...prev, scopeBuildings: { except: [...allBuildingIds] } };
+    });
   };
 
   return (
@@ -607,52 +678,117 @@ function PermissionsDialog({
           {/* Scope */}
           <TabsContent value="scope" className="m-0">
             <div className="px-6 py-4 space-y-4">
-              <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
-                <div>
-                  <p className="text-sm font-medium">Tout le patrimoine</p>
-                  <p className="text-xs text-muted-foreground">
-                    Accorde l'accès à tous les immeubles, présents et futurs.
-                  </p>
-                </div>
-                <Switch checked={allBuildings} onCheckedChange={setAllBuildings} />
+              {/* Mode selector */}
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { key: "all", label: "Tous", desc: "Patrimoine entier, présents et futurs" },
+                  { key: "include", label: "Sélection", desc: "Uniquement ces immeubles" },
+                  { key: "exclude", label: "Tous sauf", desc: "Tout sauf ces immeubles" },
+                ] as { key: ScopeMode; label: string; desc: string }[]).map((opt) => {
+                  const active = mode === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => setMode(opt.key)}
+                      className={cn(
+                        "rounded-lg border p-3 text-left transition-all",
+                        active
+                          ? "border-accent/60 bg-accent/10 shadow-soft"
+                          : "border-border/60 hover:bg-muted/40",
+                      )}
+                    >
+                      <p className={cn("text-sm font-medium", active && "text-accent")}>{opt.label}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{opt.desc}</p>
+                    </button>
+                  );
+                })}
               </div>
 
-              <Separator />
+              {mode !== "all" && (
+                <>
+                  <Separator />
 
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Immeubles attribués
-                </p>
-                <ScrollArea className="h-[300px] pr-2">
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {buildings.map((b) => {
-                      const checked =
-                        allBuildings || (draft.scopeBuildings !== "all" && draft.scopeBuildings.includes(b.id));
-                      return (
-                        <label
-                          key={b.id}
-                          className={cn(
-                            "flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 p-3 transition-colors",
-                            checked && "bg-muted/30",
-                            allBuildings && "opacity-60 cursor-not-allowed",
-                          )}
-                        >
-                          <Checkbox
-                            checked={checked}
-                            disabled={allBuildings}
-                            onCheckedChange={() => toggleBuilding(b.id)}
-                            className="mt-0.5"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{b.nom}</p>
-                            <p className="text-xs text-muted-foreground truncate">{b.adresse}</p>
-                          </div>
-                        </label>
-                      );
-                    })}
+                  {/* Summary + bulk actions + search */}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-xs text-muted-foreground">
+                      <Badge variant="outline" className="mr-2 border-accent/40 bg-accent/10 text-accent">
+                        {effectiveBuildingCount(draft.scopeBuildings, buildings.length)} / {buildings.length}
+                      </Badge>
+                      {mode === "include" ? "immeubles inclus" : "immeubles accessibles (mode exclusion)"}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={selectAllInScope}>
+                        Tout cocher
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={clearScope}>
+                        Tout décocher
+                      </Button>
+                    </div>
                   </div>
-                </ScrollArea>
-              </div>
+
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={scopeQuery}
+                      onChange={(e) => setScopeQuery(e.target.value)}
+                      placeholder="Filtrer les immeubles…"
+                      className="h-9 pl-9"
+                    />
+                  </div>
+
+                  <ScrollArea className="h-[260px] pr-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {buildings
+                        .filter((b) => {
+                          const q = scopeQuery.toLowerCase().trim();
+                          if (!q) return true;
+                          return b.nom.toLowerCase().includes(q) || b.adresse.toLowerCase().includes(q);
+                        })
+                        .map((b) => {
+                          const inScope = scopeIncludesBuilding(draft.scopeBuildings, b.id, allBuildingIds);
+                          // In include mode, "checked" means included.
+                          // In exclude mode, "checked" means excluded (i.e. in the except list).
+                          const checked =
+                            mode === "include"
+                              ? inScope
+                              : !inScope;
+                          return (
+                            <label
+                              key={b.id}
+                              className={cn(
+                                "flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 p-3 transition-colors",
+                                checked && (mode === "exclude"
+                                  ? "border-destructive/40 bg-destructive/5"
+                                  : "bg-muted/30"),
+                              )}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() => toggleBuildingInScope(b.id)}
+                                className="mt-0.5"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{b.nom}</p>
+                                <p className="text-xs text-muted-foreground truncate">{b.adresse}</p>
+                              </div>
+                              {mode === "exclude" && checked && (
+                                <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">
+                                  Exclu
+                                </Badge>
+                              )}
+                            </label>
+                          );
+                        })}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+
+              {mode === "all" && (
+                <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+                  Cet administrateur a accès à <span className="font-medium text-foreground">tous les {buildings.length} immeubles</span>, ainsi qu'à ceux ajoutés ultérieurement.
+                </div>
+              )}
             </div>
           </TabsContent>
 
