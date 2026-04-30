@@ -484,6 +484,12 @@ export default function Admins() {
       </div>
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} onInvite={handleInvite} />
+      <AdminsImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        existingEmails={admins.map((a) => a.email)}
+        onImport={handleImport}
+      />
       <PermissionsDialog admin={editing} onClose={() => setEditing(null)} onSave={handleSave} />
     </div>
   );
