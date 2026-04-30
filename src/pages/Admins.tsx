@@ -273,6 +273,66 @@ export default function Admins() {
     toast.success(`${a.name} supprimé`);
   };
 
+  const handleImport = (rows: ImportRow[]) => {
+    const buildingIds = new Set(buildings.map((b) => b.id));
+    const parseScope = (s?: string): SubAdmin["scopeBuildings"] => {
+      if (!s || s.trim() === "" || s.trim().toLowerCase() === "all") return "all";
+      const trimmed = s.trim();
+      if (trimmed.toLowerCase().startsWith("except:")) {
+        const ids = trimmed
+          .slice(7)
+          .split(",")
+          .map((x) => x.trim())
+          .filter((x) => buildingIds.has(x));
+        return { except: ids };
+      }
+      return trimmed
+        .split(",")
+        .map((x) => x.trim())
+        .filter((x) => buildingIds.has(x));
+    };
+    const validActions: ActionKey[] = ["view", "edit", "export", "delete"];
+    const validModules = new Set(MODULES.map((m) => m.key));
+    const parsePerms = (s?: string): SubAdmin["perms"] => {
+      if (!s || !s.trim()) return {};
+      const out: SubAdmin["perms"] = {};
+      s.split(";")
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .forEach((entry) => {
+          const [modPart, ...rest] = entry.split(":");
+          const mod = modPart?.trim() as ModuleKey;
+          if (!validModules.has(mod)) return;
+          const right = rest.join(":").trim();
+          const [actionsStr, capStr] = right.split("@");
+          const actions = (actionsStr || "")
+            .split("+")
+            .map((a) => a.trim())
+            .filter((a) => validActions.includes(a as ActionKey)) as ActionKey[];
+          const amountCap = capStr ? Number(capStr) : undefined;
+          out[mod] = {
+            actions,
+            amountCap: Number.isFinite(amountCap) ? (amountCap as number) : undefined,
+          };
+        });
+      return out;
+    };
+
+    const newAdmins: SubAdmin[] = rows.map((r, i) => ({
+      id: `u${Date.now()}_${i}`,
+      name: r.name,
+      email: r.email,
+      role: r.role === "super_admin" ? "super_admin" : "sub_admin",
+      status: "invited",
+      lastActive: "—",
+      scopeBuildings: parseScope(r.scope),
+      periodStart: r.periodStart || undefined,
+      periodEnd: r.periodEnd || undefined,
+      perms: parsePerms(r.modules),
+    }));
+    setAdmins((prev) => [...prev, ...newAdmins]);
+  };
+
   return (
     <div>
       <PageHeader
