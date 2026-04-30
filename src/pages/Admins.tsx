@@ -21,8 +21,10 @@ import {
   Pencil as PencilIcon,
   Download,
   Trash,
+  Upload,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { AdminsImportDialog, type ImportRow } from "@/components/admins-import-dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
