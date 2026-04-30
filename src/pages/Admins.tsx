@@ -340,10 +340,16 @@ export default function Admins() {
         title="Sous-administrateurs"
         description="Délégation ABAC : périmètres dynamiques par immeuble, période, action et plafond de montant."
         actions={
-          <Button onClick={() => setInviteOpen(true)} className="bg-gradient-primary text-primary-foreground shadow-soft">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Inviter un sous-admin
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importer
+            </Button>
+            <Button onClick={() => setInviteOpen(true)} className="bg-gradient-primary text-primary-foreground shadow-soft">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Inviter un sous-admin
+            </Button>
+          </div>
         }
       />
 
