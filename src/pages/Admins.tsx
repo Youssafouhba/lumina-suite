@@ -21,8 +21,10 @@ import {
   Pencil as PencilIcon,
   Download,
   Trash,
+  Upload,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { AdminsImportDialog, type ImportRow } from "@/components/admins-import-dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,6 +220,7 @@ export default function Admins() {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<SubAdmin | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -270,6 +273,66 @@ export default function Admins() {
     toast.success(`${a.name} supprimé`);
   };
 
+  const handleImport = (rows: ImportRow[]) => {
+    const buildingIds = new Set(buildings.map((b) => b.id));
+    const parseScope = (s?: string): SubAdmin["scopeBuildings"] => {
+      if (!s || s.trim() === "" || s.trim().toLowerCase() === "all") return "all";
+      const trimmed = s.trim();
+      if (trimmed.toLowerCase().startsWith("except:")) {
+        const ids = trimmed
+          .slice(7)
+          .split(",")
+          .map((x) => x.trim())
+          .filter((x) => buildingIds.has(x));
+        return { except: ids };
+      }
+      return trimmed
+        .split(",")
+        .map((x) => x.trim())
+        .filter((x) => buildingIds.has(x));
+    };
+    const validActions: ActionKey[] = ["view", "edit", "export", "delete"];
+    const validModules = new Set(MODULES.map((m) => m.key));
+    const parsePerms = (s?: string): SubAdmin["perms"] => {
+      if (!s || !s.trim()) return {};
+      const out: SubAdmin["perms"] = {};
+      s.split(";")
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .forEach((entry) => {
+          const [modPart, ...rest] = entry.split(":");
+          const mod = modPart?.trim() as ModuleKey;
+          if (!validModules.has(mod)) return;
+          const right = rest.join(":").trim();
+          const [actionsStr, capStr] = right.split("@");
+          const actions = (actionsStr || "")
+            .split("+")
+            .map((a) => a.trim())
+            .filter((a) => validActions.includes(a as ActionKey)) as ActionKey[];
+          const amountCap = capStr ? Number(capStr) : undefined;
+          out[mod] = {
+            actions,
+            amountCap: Number.isFinite(amountCap) ? (amountCap as number) : undefined,
+          };
+        });
+      return out;
+    };
+
+    const newAdmins: SubAdmin[] = rows.map((r, i) => ({
+      id: `u${Date.now()}_${i}`,
+      name: r.name,
+      email: r.email,
+      role: r.role === "super_admin" ? "super_admin" : "sub_admin",
+      status: "invited",
+      lastActive: "—",
+      scopeBuildings: parseScope(r.scope),
+      periodStart: r.periodStart || undefined,
+      periodEnd: r.periodEnd || undefined,
+      perms: parsePerms(r.modules),
+    }));
+    setAdmins((prev) => [...prev, ...newAdmins]);
+  };
+
   return (
     <div>
       <PageHeader
@@ -277,10 +340,16 @@ export default function Admins() {
         title="Sous-administrateurs"
         description="Délégation ABAC : périmètres dynamiques par immeuble, période, action et plafond de montant."
         actions={
-          <Button onClick={() => setInviteOpen(true)} className="bg-gradient-primary text-primary-foreground shadow-soft">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Inviter un sous-admin
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importer
+            </Button>
+            <Button onClick={() => setInviteOpen(true)} className="bg-gradient-primary text-primary-foreground shadow-soft">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Inviter un sous-admin
+            </Button>
+          </div>
         }
       />
 
@@ -415,6 +484,12 @@ export default function Admins() {
       </div>
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} onInvite={handleInvite} />
+      <AdminsImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        existingEmails={admins.map((a) => a.email)}
+        onImport={handleImport}
+      />
       <PermissionsDialog admin={editing} onClose={() => setEditing(null)} onSave={handleSave} />
     </div>
   );
