@@ -220,6 +220,7 @@ export default function Admins() {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<SubAdmin | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
