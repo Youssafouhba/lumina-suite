@@ -458,6 +458,9 @@ export default function Admins() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => setPreviewing(a)}>
+                      <EyeIcon className="mr-2 h-4 w-4" /> Voir l'aperçu
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setEditing(a)} disabled={a.role === "super_admin"}>
                       <Pencil className="mr-2 h-4 w-4" /> Modifier
                     </DropdownMenuItem>
