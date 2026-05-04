@@ -22,9 +22,11 @@ import {
   Download,
   Trash,
   Upload,
+  Eye as EyeIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { AdminsImportDialog, type ImportRow } from "@/components/admins-import-dialog";
+import { AdminPreviewDialog } from "@/components/admin-preview-dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -221,6 +223,7 @@ export default function Admins() {
   const [editing, setEditing] = useState<SubAdmin | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [previewing, setPreviewing] = useState<SubAdmin | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -435,6 +438,10 @@ export default function Admins() {
               </div>
 
               <div className="flex items-center gap-2 self-end md:self-auto">
+                <Button variant="ghost" size="sm" onClick={() => setPreviewing(a)}>
+                  <EyeIcon className="mr-2 h-3.5 w-3.5" />
+                  Aperçu
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -451,6 +458,9 @@ export default function Admins() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => setPreviewing(a)}>
+                      <EyeIcon className="mr-2 h-4 w-4" /> Voir l'aperçu
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setEditing(a)} disabled={a.role === "super_admin"}>
                       <Pencil className="mr-2 h-4 w-4" /> Modifier
                     </DropdownMenuItem>
@@ -491,6 +501,15 @@ export default function Admins() {
         onImport={handleImport}
       />
       <PermissionsDialog admin={editing} onClose={() => setEditing(null)} onSave={handleSave} />
+      <AdminPreviewDialog
+        admin={previewing}
+        totalBuildings={buildings.length}
+        onClose={() => setPreviewing(null)}
+        onEdit={(a) => {
+          setPreviewing(null);
+          setEditing(a as SubAdmin);
+        }}
+      />
     </div>
   );
 }
