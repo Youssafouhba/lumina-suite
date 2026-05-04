@@ -438,6 +438,10 @@ export default function Admins() {
               </div>
 
               <div className="flex items-center gap-2 self-end md:self-auto">
+                <Button variant="ghost" size="sm" onClick={() => setPreviewing(a)}>
+                  <EyeIcon className="mr-2 h-3.5 w-3.5" />
+                  Aperçu
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
