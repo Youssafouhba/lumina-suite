@@ -501,6 +501,15 @@ export default function Admins() {
         onImport={handleImport}
       />
       <PermissionsDialog admin={editing} onClose={() => setEditing(null)} onSave={handleSave} />
+      <AdminPreviewDialog
+        admin={previewing}
+        totalBuildings={buildings.length}
+        onClose={() => setPreviewing(null)}
+        onEdit={(a) => {
+          setPreviewing(null);
+          setEditing(a as SubAdmin);
+        }}
+      />
     </div>
   );
 }
